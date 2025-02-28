@@ -16,7 +16,7 @@ function Navbar() {
 
   return (
     <nav className="navbar">
-      <h1 className="navbar-title">EPINET PeerCoPilot</h1>
+      <h1 className="navbar-title">EPINET Co-Pilot</h1>
       <div className="hamburger" onClick={toggleMenu}>
         &#9776; {/* Hamburger icon */}
       </div>
@@ -37,7 +37,7 @@ function Navbar() {
           }`}
         >
           <img src={WellnessGoalsIcon} alt="Wellness Goals Icon" className="navbar-icon" />
-          Wellness Planner
+          Wellness Goals Assistant
         </Link>
         <Link
           to="/resource-database"

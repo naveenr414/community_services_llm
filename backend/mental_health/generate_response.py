@@ -104,7 +104,7 @@ def analyze_mental_health_situation(situation, all_messages,model):
         which_external_resources = {}
 
     full_situation = "\n".join([i['content'] for i in all_messages if i['role'] == 'user' and len(i['content']) < 500] + [situation])
-    rag_info = analyze_situation_rag_guidance(full_situation,which_external_resources)
+    rag_info = analyze_situation_rag_guidance(full_situation, which_external_resources)
     print("RAG took {}".format(time.time()-start))
 
     new_message = [{'role': 'system', 'content': summary_prompt}]

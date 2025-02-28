@@ -71,22 +71,6 @@ def eligibility_check(user_info: str) -> str:
     }
 
     def categorize_eligibility(score: float) -> str:
-        """
-        Categorizes eligibility based on a given score.
-    
-        The function assigns an eligibility category based on the score value:
-        - "Highly likely eligible" for scores 90 and above.
-        - "Likely eligible" for scores between 70 and 89.
-        - "Maybe eligible" for scores between 40 and 69.
-        - "Not eligible" for scores below 40.
-    
-        Parameters:
-        score (float): The eligibility score.
-    
-        Returns:
-        str: The eligibility category corresponding to the score.
-        """
-        
         if score >= 90:
             return "Highly likely eligible"
         elif score >= 70:
@@ -97,28 +81,6 @@ def eligibility_check(user_info: str) -> str:
             return "Not eligible"
 
     def calculate_eligibility_score(user_info,benefit: str) -> Dict[str, any]:
-        """
-        Calculates an eligibility score for a given benefit based on user information.
-    
-        The function evaluates user-provided data against predefined benefit constraints
-        to compute a normalized eligibility score and categorize eligibility. It also 
-        tracks constraints that are met, unmet, or missing due to insufficient information.
-    
-        Parameters:
-        user_info (dict): A dictionary containing user data such as income, family status, 
-                          and other relevant attributes.
-        benefit (str): The name of the benefit for which eligibility is being evaluated.
-    
-        Returns:
-        dict: A dictionary containing:
-            - "score" (float): The normalized eligibility score (0-100).
-            - "category" (str): The eligibility category (e.g., "Highly likely eligible").
-            - "met_constraints" (List[str]): Descriptions of constraints that were satisfied.
-            - "unmet_constraints" (List[str]): Descriptions of constraints that were not met.
-            - "missing_constraints" (List[str]): Descriptions of constraints that could not 
-              be evaluated due to missing information.
-        """
-        
         score = 0.0
         met_constraints: List[str] = []
         unmet_constraints: List[str] = []
@@ -169,23 +131,6 @@ def eligibility_check(user_info: str) -> str:
         }
 
     def generate_output(results: Dict[str, Dict[str, any]]) -> str:
-        """
-        Generates a formatted string summarizing the eligibility evaluation results.
-    
-        The function takes the calculated eligibility scores for multiple benefits,
-        sorts them in descending order based on score, and formats the output to
-        display each benefit's eligibility category, met constraints, unmet constraints,
-        and missing constraints.
-    
-        Parameters:
-        results (dict): A dictionary where keys are benefit names and values are 
-                        dictionaries containing the eligibility score, category, 
-                        and constraint evaluation details.
-    
-        Returns:
-        str: A formatted string summarizing the eligibility assessment for each benefit.
-        """
-        
         output = ""
 
         sorted_results = sorted(results.items(),key=lambda k: k[1]['score'],reverse=True)

@@ -32,10 +32,10 @@ def process_resources(csv_file_path):
     Returns: List of strings, each represents a document"""
 
     resources_df = pd.read_csv(csv_file_path)
-    names = list(resources_df['service'])
-    descriptions = list(resources_df['description'])
-    urls = list(resources_df['url'])
-    phones = list(resources_df['phone'])
+    names = list(resources_df['Organization'])
+    descriptions = list(resources_df['Generated Description'])
+    urls = list(resources_df['Website'])
+    phones = list(resources_df['Phone'])
 
     return ["{}: {}".format(names[i], descriptions[i]) for i in range(len(names))], names, descriptions, urls, phones
 

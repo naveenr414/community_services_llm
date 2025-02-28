@@ -123,7 +123,7 @@ function GenericChat({ context, title, socketServerUrl, showLocation, tool }) {
     const messageText =
       inputText.trim() +
       "\n Location: " +
-      (inputLocationText.trim() || "New Jersey");
+      (inputLocationText.trim() || "Pennsylvania");
 
     const userMsg = { sender: 'user', text: inputText.trim() };
     setConversation((prev) => [...prev, userMsg]);
@@ -289,7 +289,7 @@ export const ResourceRecommendation = () => (
   <GenericChat
     context={ResourceContext}
     title="Resource Database"
-    socketServerUrl={`http://${window.location.hostname}:8000`}
+    socketServerUrl={`http://${window.location.hostname}:8001`}
     showLocation={true}
     tool="resource"
   />
@@ -298,8 +298,8 @@ export const ResourceRecommendation = () => (
 export const WellnessGoals = () => (
   <GenericChat
     context={WellnessContext}
-    title="Wellness Goals"
-    socketServerUrl={`http://${window.location.hostname}:8000`}
+    title="Wellness Planner"
+    socketServerUrl={`http://${window.location.hostname}:8001`}
     showLocation={false}
     tool="wellness"
   />
@@ -309,7 +309,7 @@ export const BenefitEligibility = () => (
   <GenericChat
     context={BenefitContext}
     title="Benefit Eligibility"
-    socketServerUrl={`http://${window.location.hostname}:8000`}
+    socketServerUrl={`http://${window.location.hostname}:8001`}
     showLocation={false}
     tool="benefit"
   />
