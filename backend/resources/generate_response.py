@@ -12,7 +12,7 @@ import torch
 openai.api_key = key
 # csv_file_path = "resources/data/all_resources.csv"
 # csv_file_path = "data/all_resources_2025.csv"
-csv_file_path = "resources/data/all_resources_2025.csv"
+csv_file_path = "resources/data/all_resources_2025_updated.csv"
 
 if torch.cuda.is_available():
     print("CUDA is available!")
@@ -33,6 +33,8 @@ for guidance, doc_list in documents_by_guidance.items():
 file_path = "results/saved_embedding.npy"
 embeddings = load_embeddings(file_path, documents, model)
 main_index = create_faiss_index(embeddings)
+
+print("Loaded!")
 
 def analyze_resource_situation(situation, all_messages,text_model):
     """Process user situation + find the relevant resources.
