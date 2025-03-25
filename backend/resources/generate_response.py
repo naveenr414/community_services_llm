@@ -59,7 +59,7 @@ def analyze_resource_situation(situation, all_messages,text_model):
                                                   {'role': 'user','content': response}],max_tokens=500)
     yield from stream_process_chatgpt_response(stream_response)
 
-def analyze_situation_rag(situation,k=5):
+def analyze_situation_rag(situation, k=5):
     """Given a string, find the most similar resources using RAG
     
     Arguments:
