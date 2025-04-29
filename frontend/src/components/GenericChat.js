@@ -14,6 +14,7 @@ function GenericChat({ context, title, socketServerUrl, showLocation, tool }) {
     submitted,
     chatConvo, setChatConvo,
     organization,setOrganization,
+    user
   } = useContext(context);
 
   const inputRef = useRef(null);
@@ -21,6 +22,7 @@ function GenericChat({ context, title, socketServerUrl, showLocation, tool }) {
   const [socket, setSocket] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [conversationID, setConversationID] = useState("");
 
   useEffect(() => {
     const newSocket = io(socketServerUrl, {
@@ -32,6 +34,10 @@ function GenericChat({ context, title, socketServerUrl, showLocation, tool }) {
     newSocket.on('connect', () => {
       console.log('[Socket.io] Connected to server');
     });
+
+    newSocket.on("conversation_id", (data) => {
+      setConversationID(data.conversation_id)
+    }); 
 
     newSocket.on('welcome', (data) => {
       console.log('[Socket.io] Received welcome message:', data);
@@ -124,12 +130,15 @@ function GenericChat({ context, title, socketServerUrl, showLocation, tool }) {
 
     if (socket) {
       console.log('[GenericChat] Emitting start_generation event');
+      console.log(user.username);
       socket.emit('start_generation', {
         text: messageText,
         previous_text: chatConvo,
         model: "A",
         organization: organization, 
         tool,
+        conversation_id: conversationID,
+        username: user.username
       });
     } else {
       console.error('[GenericChat] Socket is not connected.');

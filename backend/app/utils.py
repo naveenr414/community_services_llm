@@ -47,7 +47,7 @@ def call_chatgpt_api(system_prompt,prompt,stream=True):
         return response.choices[0].message.content
 
 
-def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750):
+def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750,response_format=None):
     """Run ChatGPT with the 4o-mini model for a system prompt
     
     Arguments:
@@ -57,12 +57,22 @@ def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750):
         max_tokens: Integer, maximum number of tokens from OpenAI
     
     Returns: Either a Stream or String, result from ChatGPT"""
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",  
-        messages=all_chats,
-        stream=stream,
-        max_tokens=max_tokens,
-    )
+
+    if response_format is not None:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",  
+            messages=all_chats,
+            stream=stream,
+            max_tokens=max_tokens,
+            response_format=response_format
+        )
+    else:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",  
+            messages=all_chats,
+            stream=stream,
+            max_tokens=max_tokens,
+        )
     
     if stream:
         return response

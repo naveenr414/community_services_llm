@@ -9,6 +9,7 @@ const createContextProvider = (Context) => ({ children }) => {
   const [chatConvo, setChatConvo] = useState([]);
   const [inputLocationText, setInputLocationText] = useState('');
   const [organization, setOrganization] = useState('cspnj');
+  const [user, setUser] = useState({username: '', isAuthenticated: false});
 
   const resetContext = () => {
     setInputText('');
@@ -34,6 +35,8 @@ const createContextProvider = (Context) => ({ children }) => {
     setChatConvo,
     organization,
     setOrganization,
+    user,
+    setUser,
     resetContext,
   };
 

@@ -4,7 +4,33 @@
   height: 100vh;
   box-sizing: border-box;
 }
+.add {
+  margin-left: auto;  /* Push the button to the rightmost side */
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid #D5D5D5;
+  background-color: white; 
+   height: 40px;
+   float: right;
 
+  /* Minimal changes */
+  display: flex;  /* Align content vertically inside the button */
+  justify-content: center;  /* Center content horizontally inside the button */
+  margin-left: 10px;  /* Optional: add space between the input and button */
+}
+
+
+.search-container {
+  display: flex;  /* Align input and button horizontally */
+  align-items: center;  /* Vertically align input and button */
+  margin-bottom: 10px; 
+  width: 50%;
+}
+
+table {
+  width: 50%;
+}
 
 .left-section {
   width: 100%;
@@ -204,4 +230,219 @@
 .backend-select {
   border-radius: 5px;
   font-family: Arial, sans-serif;
+}
+
+.main-content {
+  width: 100%; 
+  padding: 20px;
+  transition: margin-right 0.3s ease-in-out; 
+}
+
+.main-content.shifted {
+  margin-right: 20%;
+}
+table {
+  border-collapse: separate;
+  border-radius: 10px 10px 0 0;  /* Apply border-radius to only the bottom corners */
+  border: 1px solid #D5D5D5;
+  overflow: hidden; /* Ensures the border-radius works properly */
+}
+
+table td {
+  border-radius: 0; /* Make sure td elements don't have their own border-radius */
+}
+
+table th {
+  border-radius: 0; /* No border-radius on th (first row) */
+}
+
+
+table td:last-child, table th:last-child {
+  text-align: center;  /* Center the content of the last column */
+}
+.Active {
+  flex-shrink: 0;
+  border-radius: 16.5px;
+  background: #EFFAEE;
+  color: #85CD82;
+  font-family: Inter;
+  font-style: normal;
+  box-sizing: border-box;  /* Ensure padding is included within the element's dimensions */
+  padding: 5px;
+}
+
+.Pending {
+  flex-shrink: 0;
+  border-radius: 16.5px;
+  background: #EAF9FF;
+  color: #7EC0EC;
+  font-family: Inter;
+  font-style: normal;
+  box-sizing: border-box;  /* Ensure padding is included within the element's dimensions */
+  padding: 5px;
+}
+
+.Inactive {
+  flex-shrink: 0;
+  border-radius: 16.5px;
+  background: #FFEDED;
+  color: #DD7A67;
+  font-family: Inter;
+  font-style: normal;
+  box-sizing: border-box;  /* Ensure padding is included within the element's dimensions */
+  padding: 5px;
+}
+
+button {
+  cursor: pointer;  /* Changes the cursor to a clickable (hand) icon when hovering over a row */
+}
+
+.card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 480px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+.info-section {
+  background-color: #f9f9f9;
+  padding: 16px 20px;
+  margin: 12px;
+  border-radius: 6px;
+}
+.section-label {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.section-label svg {
+  margin-right: 6px;
+}
+.section-content {
+  font-size: 16px;
+  font-weight: 500;
+}
+.edit-button {
+  color: #0066cc;
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.edit-button svg {
+  margin-right: 4px;
+}
+.message-box {
+  background-color: white;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 20px;
+}
+.header-with-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.icon {
+  padding-right: 10px;
+}
+
+.input-section {
+  background-color: #f9f9f9;
+  padding: 16px 20px;
+  margin: 12px;
+  border-radius: 6px;
+}
+.section-label {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.section-label svg {
+  margin-right: 6px;
+}
+input, textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.message-box {
+  background-color: white;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 20px;
+}
+.save-button-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+}
+.save-button {
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.save-button:hover {
+  background-color: #0055b3;
+}
+.form-group {
+  margin-bottom: 8px;
+}
+
+table tr {
+  cursor: pointer;  /* Changes the cursor to a clickable (hand) icon when hovering over a row */
+}
+
+th {
+  text-align: left;
+  padding: 10px;
+  box-sizing: border-box;  /* Ensure padding is included within the element's dimensions */
+}
+
+td {
+  padding: 10px;
+  box-sizing: border-box;  /* Ensure padding is included within the element's dimensions */
 }
