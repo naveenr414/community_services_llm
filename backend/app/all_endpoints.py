@@ -178,8 +178,7 @@ async def start_generation(sid, data):
     model = data.get("model")
     organization = data.get("organization")
     
-    generator = construct_response(text, previous_text, model,organization)
-    
+    generator = construct_response(text, previous_text, model, organization)    
     if sid in generation_tasks:
         generation_tasks[sid].cancel()
 

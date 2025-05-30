@@ -57,7 +57,7 @@ def process_guidance_resources(guidance_types):
 
     documents_by_guidance = {}
     for guidance in guidance_types:
-        with open(f"prompts/external/{guidance}.txt") as file:
+        with open(f"prompts/external/{guidance}.txt", encoding="utf-8") as file:
             resource_data = [line for line in file.read().split("\n") if len(line) > 10]
             documents_by_guidance[guidance] = [f"{line}: {resource_data[i]}" for i, line in enumerate(resource_data)]
     return documents_by_guidance

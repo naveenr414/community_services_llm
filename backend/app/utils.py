@@ -117,9 +117,29 @@ def get_all_prompts():
     external_prompts = {}
 
     for i in internal_prompt_names:
-        internal_prompts[i] = open("prompts/internal/{}.txt".format(i)).read()
+        internal_prompts[i] = open("prompts/internal/{}.txt".format(i), encoding="utf-8").read()
 
     for i in external_prompt_names:
-        external_prompts[i] = open("prompts/external/{}.txt".format(i)).read()
+        external_prompts[i] = open("prompts/external/{}.txt".format(i), encoding="utf-8").read()
 
     return internal_prompts, external_prompts
+
+def call_chatgpt_with_functions(messages, functions, stream=False, max_tokens=750):
+    """
+    Wrapper around OpenAI’s function-calling API.
+    Always returns a single ChatCompletion object.
+    """
+    # Use the ChatCompletion class directly
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",        # or your preferred function-calling model
+        messages=messages,
+        functions=functions,
+        function_call="auto",
+        stream=stream,
+        max_tokens=max_tokens,
+    )
+
+    # If someone accidentally returned a tuple/list, take the first element
+    if isinstance(response, (tuple, list)):
+        response = response[0]
+    return response
