@@ -4,8 +4,10 @@
     "node": "18.x"
   },
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "start": "cd backend && python -m uvicorn app.all_endpoints:socket_app"
+    "prestart": "cd frontend && npm install && npm run build",
+    "start": "cd backend && python -m uvicorn app.all_endpoints:socket_app --reload"
+  },
+  "dependencies": {
+    "remark-gfm": "^4.0.1"
   }
 }
-

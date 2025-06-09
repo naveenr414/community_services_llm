@@ -1,14 +1,17 @@
 .resource-recommendation-container {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  width: 100%;
+  height: 100vh;        /* fill the screen height */
   box-sizing: border-box;
 }
 
 
 .left-section {
+  flex: 1;              /* allow it to fill all available space */
   width: 100%;
-  max-width: 800px;
+  /* Remove or increase this max-width if you want less gap */
+  max-width: none;      /* ← REMOVED the old “800px” limit */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -141,7 +144,12 @@
 }
 
 .right-section {
-  width: 100%;
+  /* DOUBLE the old 600px → now 1200px */
+  width: 600px;            /* or whatever “double” you need */
+
+  /* use a small fixed margin so it hugs just to the right of the chat: */
+  margin-left: 20px;        /* gap of 20px from the left column */
+
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -149,7 +157,6 @@
   border-radius: 10px;
   height: 95%;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  margin-right: 20px;
   box-sizing: border-box;
   overflow-y: auto;
 }

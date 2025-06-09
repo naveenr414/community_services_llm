@@ -1,5 +1,14 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# backend/app/all_endpoints.py
+# ─────────────────────────────────────────────────────────────────────────────
+
 import asyncio
 import os
+
+import asyncio
+import os
+import json
+import re
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,40 +16,85 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.submodules import construct_response
+from app.submodules import (
+    get_questions_resources,
+    construct_response,
+    call_chatgpt_api_all_chats,
+    internal_prompts,
+)
 
 import socketio
 
 generation_tasks = {}
 
+# (These environment variables are fine—no changes here)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_DEBUG_CPU_TYPE"] = "5"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Create FastAPI app, add CORS (allow React dev / 8000)
+# ─────────────────────────────────────────────────────────────────────────────
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
+        "http://localhost:3000",  # during React dev
+        "http://127.0.0.1:8000",  # when served statically by FastAPI
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Run the React frontend
+# ─────────────────────────────────────────────────────────────────────────────
+# Keep-alive header (no change)
+# ─────────────────────────────────────────────────────────────────────────────
 @app.middleware("http")
 async def add_keep_alive_header(request: Request, call_next):
     response = await call_next(request)
     response.headers["Connection"] = "keep-alive"
     return response
-app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
-@app.get("/{full_path:path}")
-async def serve_react_app(full_path: str):
-    return FileResponse("../frontend/build/index.html")
 
-# Handle Socket Messages
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) Mount React’s static files (the freshly built JS/CSS) from frontend/build/static.
+#
+#    We assume this file is located at:
+#      …/community_services_llm/backend/app/all_endpoints.py
+#
+#    so:
+#      os.path.dirname(__file__)           → …/community_services_llm/backend/app
+#      os.path.dirname(os.path.dirname(__file__)) → …/community_services_llm/backend
+#      os.path.join(that, "../frontend/build/static")
+#                    → …/community_services_llm/backend/../frontend/build/static
+#                    → …/community_services_llm/frontend/build/static
+# ─────────────────────────────────────────────────────────────────────────────
+app.mount(
+    "/static",
+    StaticFiles(
+        directory=os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "../frontend/build/static"
+        )
+    ),
+    name="static"
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SOCKET.IO setup (no change below this line) including connect, disconnect,
+# run_generation, start_generation, reset_session, etc.
+#
+# You can leave all of your @sio.event definitions exactly as they were.
+# ─────────────────────────────────────────────────────────────────────────────
+
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins="*"
+)
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 class Message(BaseModel):
     text: str
@@ -48,45 +102,20 @@ class Message(BaseModel):
     model: str
     organization: str
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
-
 def process_raw_chunk(raw_chunk: str) -> str:
     if raw_chunk.startswith("data:"):
         return raw_chunk[len("data: "):].replace('\n','')
     return raw_chunk.strip()
 
 def accumulate_chunks(generator):
-    """
-    Accumulates and processes streaming text chunks from a generator.
-
-    This function iterates over a generator of raw text chunks, processes each chunk,
-    and appends it to an accumulated string with appropriate formatting. The function 
-    yields the progressively accumulated text after each chunk is processed.
-
-    Processing rules:
-    - If the token is "[DONE]", it is ignored.
-    - If the token starts with '#', a newline is prepended before adding it.
-    - If the token ends with '<br/>', a newline is appended after it.
-    - If the token is '<br/><br/>', it is replaced with a single '<br/>'.
-    - Otherwise, the token is appended to the accumulated text.
-
-    Parameters:
-    generator (iterator): An iterator that yields raw text chunks.
-
-    Yields:
-    str: The progressively accumulated text after processing each chunk.
-    """
     accumulated = ""
     for raw_chunk in generator:
-        # print("before: {}".format(list(raw_chunk)))
         token = process_raw_chunk(raw_chunk)
-        # print("after: {}".format(token))
         if token != "[DONE]":
             if token.startswith('#'):
                 accumulated += '\n' + token
             elif token.endswith('<br/>'):
-                accumulated += token + '\n' 
+                accumulated += token + '\n'
             elif token == '<br/><br/>':
                 accumulated += '<br/>'
             else:
@@ -103,28 +132,6 @@ async def disconnect(sid):
     print(f"[Socket.IO] Client disconnected: {sid}")
 
 async def run_generation(sid, generator):
-    """
-    Handles real-time streaming of generated text chunks to a client via Socket.IO.
-
-    This function processes a generator that produces accumulated text chunks and 
-    asynchronously emits updates to the client. It ensures graceful handling of 
-    cancellations and errors.
-
-    Parameters:
-    sid (str): The session ID of the client.
-    generator (Iterator[str]): An iterator yielding progressively accumulated text chunks.
-
-    Behavior:
-    - Iterates through `accumulate_chunks(generator)`, emitting each chunk as a "generation_update".
-    - Introduces a small delay (`asyncio.sleep(0.1)`) to prevent overwhelming the client.
-    - Catches `asyncio.CancelledError` to handle task cancellation gracefully and notifies the client.
-    - Handles unexpected exceptions, logging errors and notifying the client.
-    - Ensures that the session ID is removed from `generation_tasks` upon completion.
-    - Sends a final "generation_complete" event to signal the end of text generation.
-
-    Returns:
-    None (asynchronous function).
-    """
     try:
         for accumulated_text in accumulate_chunks(generator):
             await sio.emit("generation_update", {"chunk": accumulated_text}, room=sid)
@@ -141,49 +148,91 @@ async def run_generation(sid, generator):
             del generation_tasks[sid]
         await sio.emit("generation_complete", {"message": "Response generation complete."}, room=sid)
 
+# @sio.event
+# async def start_generation(sid, data):
+#     print(f"[Socket.IO] Received start_generation from {sid} with data: {data}")
+#     text = data.get("text", "")
+#     previous_text = data.get("previous_text", [])
+#     model = data.get("model")
+#     organization = data.get("organization")
 
+#     generator = construct_response(text, previous_text, model, organization)
+#     if sid in generation_tasks:
+#         generation_tasks[sid].cancel()
+
+#     task = asyncio.create_task(run_generation(sid, generator))
+#     generation_tasks[sid] = task
 @sio.event
 async def start_generation(sid, data):
-    """
-    Initiates a text generation process based on the provided user input and tool type.
-
-    This function processes incoming data from a Socket.IO connection, determines the appropriate
-    analysis function based on the specified tool type, and starts an asynchronous generation task.
-    If a previous task exists for the given session ID (`sid`), it is canceled before starting a new one.
-
-    Expected data format:
-    {
-        "text": str,          # User input text.
-        "previous_text": list, # List of previous messages for context.
-        "model": str,         # Model type ("copilot" or "chatgpt").
-        "tool": str           # Tool type ("benefit", "wellness", or "resource").
-    }
-
-    Parameters:
-    sid (str): The session ID associated with the request.
-    data (dict): A dictionary containing the input text, previous conversation history,
-                 selected model, and tool type.
-
-    Behavior:
-    - Calls the appropriate function (`analyze_benefits`, `analyze_mental_health_situation`, or
-      `analyze_resource_situation`) based on the `tool` value.
-    - Emits an error message if an invalid `tool` is provided.
-    - Cancels any existing generation task associated with the session ID before starting a new one.
-    - Creates an asynchronous task (`run_generation`) to process the generator and store it.
-    """
     print(f"[Socket.IO] Received start_generation from {sid} with data: {data}")
-
-    text = data.get("text", "")
+    text          = data.get("text", "")
     previous_text = data.get("previous_text", [])
-    model = data.get("model")
-    organization = data.get("organization")
-    
-    generator = construct_response(text, previous_text, model, organization)    
+    model         = data.get("model")
+    organization  = data.get("organization")
+
+    # 1) Offload the small “intent check” to a thread so we don't block
+    loop = asyncio.get_running_loop()
+    intent_msgs = [
+      {
+        "role": "system",
+        "content": (
+          "You’re a request analyzer.  "
+          "Given one user message, answer **strictly** in JSON with two keys:\n"
+          '  • "needs_goals": true if they want advice or help or concrete next steps;\n'
+          '  • "verbosity": one of "brief","medium","deep".\n'
+          "Return only valid JSON, no extra commentary."
+        )
+      },
+      {"role": "user", "content": text}
+    ]
+    try:
+        meta_resp = await loop.run_in_executor(
+          None,
+          call_chatgpt_api_all_chats,
+          intent_msgs,
+          False,
+          40
+        )
+        meta = json.loads(meta_resp.strip())
+        needs_goals = bool(meta.get("needs_goals", False))
+    except Exception as e:
+        print(f"[Socket.IO] Error parsing needs_goals: {e}")
+        needs_goals = False
+
+    # 2) If goals are needed, fetch & emit them
+    #if the goals are not nneeded then emit them and remove them and delete them 
+    #If the goals are not needed then emit them and discard them and delete them 
+    if needs_goals:
+        loop = asyncio.get_running_loop()
+        full_text, external_resources, raw_prompt = await loop.run_in_executor(
+           None, get_questions_resources, text, previous_text, organization
+        )
+        match = re.search(r"SMART Goals:\s*(.*?)\nQuestions:", full_text, flags=re.DOTALL)
+        if match:
+            goals = [
+                line.strip().lstrip("•").strip()
+                for line in match.group(1).splitlines()
+                if line.strip()
+            ]
+        else:
+            goals = []
+        resources = [
+            r.strip() for r in external_resources.splitlines() if r.strip()
+        ]
+
+        await sio.emit(
+          "goals_update",                   # ← new event name
+          {"goals": goals, "resources": resources},
+          room=sid
+        )
+
+    # 3) Continue with your existing streaming logic
+    generator = construct_response(text, previous_text, model, organization)
     if sid in generation_tasks:
         generation_tasks[sid].cancel()
-
     task = asyncio.create_task(run_generation(sid, generator))
     generation_tasks[sid] = task
+
 
 
 @sio.event
@@ -195,6 +244,11 @@ async def reset_session(sid):
     await sio.emit("reset_ack", {"message": "Session reset."}, room=sid)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) Single “catch-all” GET route must come *after* the /static mount.
+#    Any request not matching “/static/*” (e.g. “/wellness-goals”) will get index.html,
+#    and then React Router (in index.html) will load the correct component.
+# ─────────────────────────────────────────────────────────────────────────────
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
     return FileResponse("../frontend/build/index.html")

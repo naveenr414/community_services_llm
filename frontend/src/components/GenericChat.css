@@ -1,0 +1,32 @@
+/* .goals-box, .resources-box {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 12px 0;
+  background: #fafafa;
+}
+
+.scroll-container {
+  max-height: 180px;   
+  overflow-y: auto;
+  padding-right: 4px;  
+} 
+*/
+
+.goals-box, .resources-box {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 20px;
+  background: #fafafa;
+}
+
+.scroll-container {
+  max-height: calc(100% - 1.5em); /* leaves room for the <h3> */
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* .resource-item {
+  margin-bottom: 0.75em;
+} */
