@@ -8,7 +8,7 @@ from app.database import CONNECTION_STRING
 def get_all_service_users(provider_username, organization):
     """Get all service users for a given provider with their latest outreach details."""
 
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
     conn.row_factory = dict_row  # Return results as dictionaries
     cursor = conn.cursor()
     
@@ -33,7 +33,7 @@ def get_all_service_users(provider_username, organization):
 
 def get_all_outreach(provider_username, organization):
     """Get all outreach details for service users of a given provider."""    
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     

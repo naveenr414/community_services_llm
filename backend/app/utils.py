@@ -1,11 +1,19 @@
 """Small utility wrappers for PDF handling and OpenAI/ChatGPT access."""
 
-import openai
+from openai import AzureOpenAI
 import PyPDF2
 from fpdf import FPDF
 from pathlib import Path
+import os 
+from openai import AzureOpenAI
 
 BASE_DIR = Path(__file__).parent.parent
+
+client = AzureOpenAI(
+            api_version="2024-12-01-preview",
+            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+            api_key=os.environ.get("OPENAI_API_KEY_AZURE"),
+        )
 
 def write_text_pdf(text,pdf_loc):
     """Save some text into a PDF
@@ -35,8 +43,8 @@ def call_chatgpt_api(system_prompt,prompt,stream=True):
 
     Returns: String, result from ChatGPT"""
 
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",  
+    response = client.chat.completions.create(
+        model="gpt-5-chat",  
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
@@ -63,16 +71,16 @@ def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750,response_for
     Returns: Either a Stream or String, result from ChatGPT"""
 
     if response_format is not None:
-        response = openai.chat.completions.create(
-            model="gpt-5.2",  
+        response = client.chat.completions.create(
+            model="gpt-5-chat",  
             messages=all_chats,
             stream=stream,
             # max_tokens=max_tokens,
             response_format=response_format
         )
     else:
-        response = openai.chat.completions.create(
-            model="gpt-5.2",  
+        response = client.chat.completions.create(
+            model="gpt-5-chat",  
             messages=all_chats,
             stream=stream,
             # max_tokens=max_tokens,
@@ -143,8 +151,8 @@ def call_chatgpt_with_functions(messages, functions, stream=False, max_tokens=75
     Wrapper around OpenAI’s function-calling API.
     Always returns a single ChatCompletion object.
     """
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini", 
+    response = client.chat.completions.create(
+        model="gpt-5-chat", 
         messages=messages,
         functions=functions,
         function_call="auto",

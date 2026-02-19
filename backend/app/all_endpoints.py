@@ -19,6 +19,7 @@ import threading
 import time
 import socketio
 from app.phi_scrubber import PHIScrubber
+from openai import AzureOpenAI
 
 from app.audit_logger import AuditLogger
 from app.submodules import construct_response
@@ -206,10 +207,14 @@ def generate_sidebar_update(all_messages, sid, loop):
         messages = [{"role": "system", "content": system_prompt}] + context_messages
 
         # 2. Call GPT-4o-mini
-        client = openai.Client(api_key=os.environ.get("SECRET_KEY"))
+        client = AzureOpenAI(
+            api_version="2024-12-01-preview",
+            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+            api_key=os.environ.get("OPENAI_API_KEY_AZURE"),
+        )
         
-        completion = client.beta.chat.completions.parse(
-            model="gpt-4o-mini", 
+        completion = client.chat.completions.parse(
+            model="gpt-5-chat", 
             messages=messages,
             response_format=SidebarState
         )
@@ -501,7 +506,7 @@ def submit_feedback(feedback: FeedbackRequest):
 
     try:
         # Use your existing connection string
-        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        with psycopg.connect(os.environ["DATABASE_URL"],sslmode="require") as conn:
             with conn.cursor() as cur:
                 
                 # Optional: Verify conversation exists first

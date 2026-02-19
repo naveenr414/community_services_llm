@@ -34,7 +34,7 @@ _CACHE = {
 }
 
 def get_db_connection():
-    return psycopg.connect(CONNECTION_STRING)
+    return psycopg.connect(CONNECTION_STRING,sslmode="require")
 
 def get_embedding_model():
     """Lazy loads the model."""

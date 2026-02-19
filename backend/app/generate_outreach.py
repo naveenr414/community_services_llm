@@ -79,7 +79,7 @@ def load_messages_for_conversation(conversation_id):
     Returns: List of dictionaries with sender, text, and created_at
 
     """
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -95,7 +95,7 @@ def load_messages_for_conversation(conversation_id):
 
 def generate_check_ins_standard(service_user_id: str, conversation_summary: str = ""):
     """Generate and insert 3 check-ins at 1, 2, and 3 weeks"""
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
     cursor = conn.cursor()
     
     try:
@@ -177,7 +177,7 @@ def generate_check_ins_rule_based(service_user_id: str, conversation_id: str):
     conversation = [message["text"] for message in messages]
     urgencies = detect_urgency("\n".join(conversation))
     
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
     cursor = conn.cursor()
     
     try:

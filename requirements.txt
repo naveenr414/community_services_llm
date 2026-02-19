@@ -1,1 +1,24 @@
--r backend/requirements.txt
+fastapi
+uvicorn
+pydantic
+python-socketio
+openai
+pandas
+faiss-cpu
+numpy
+sentence-transformers==3.2.1
+PyPDF2
+python-dotenv
+fpdf2
+--only-binary :all:
+blis>=0.7.11
+spacy>=3.8.0,<3.9.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+PyJWT
+Psycopg
+pgvector
+scikit-learn
+requests
+apscheduler
+ddgs
+googlemaps

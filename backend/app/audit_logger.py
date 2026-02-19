@@ -25,7 +25,7 @@ class AuditLogger:
     ):
         """Log an audit event with PHI scrubbing."""
         try:
-            conn = psycopg.connect(CONNECTION_STRING)
+            conn = psycopg.connect(CONNECTION_STRING,sslmode="require")
             cursor = conn.cursor()
             
             # Scrub PHI from details

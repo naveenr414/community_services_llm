@@ -38,7 +38,7 @@ def update_conversation(metadata, previous_text, service_user_id):
     if username == "" or conversation_id == "":
         return
 
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     cursor = conn.cursor()
 
     cursor.execute("SELECT id FROM conversations WHERE id = %s", (conversation_id,))
@@ -74,7 +74,7 @@ def generate_service_user_id(provider_username: str, patient_name: str) -> str:
 def add_new_service_user(provider_username, patient_name, last_session, next_checkin, location,followup_message):
     """Create or update a service user's record using a deterministic hashed ID."""
     
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     cursor = conn.cursor()
 
     try:
@@ -100,7 +100,7 @@ def add_new_service_user(provider_username, patient_name, last_session, next_che
         conn.close() 
 
 def edit_service_user_outreach(check_in_id, date, message):
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     try:
@@ -120,7 +120,7 @@ def edit_service_user_outreach(check_in_id, date, message):
 
 
 def fetch_service_user_checkins(service_user_id):
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     try:
@@ -142,7 +142,7 @@ def fetch_service_user_checkins(service_user_id):
         conn.close()
         
 def fetch_provider_checkins_by_date(provider, check_in_date):
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     try:
@@ -169,7 +169,7 @@ def fetch_provider_checkins_by_date(provider, check_in_date):
         conn.close()
 
 def fetch_providers_to_notify_checkins(time_begin, time_end):
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     try:
@@ -203,7 +203,7 @@ def update_notification_settings(username, email, notifications_enabled, notific
     Returns:
         Tuple: (success: bool, message: str)
     """
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     cursor = conn.cursor()
     
     try:
@@ -240,7 +240,7 @@ def get_notification_settings(username):
     Returns:
         Tuple: (success: bool, settings: dict or error message)
     """
-    conn = psycopg.connect(CONNECTION_STRING)
+    conn = psycopg.connect(CONNECTION_STRING, sslmode="require")
     conn.row_factory = dict_row
     cursor = conn.cursor()
     

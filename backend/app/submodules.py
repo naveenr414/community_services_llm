@@ -5,7 +5,7 @@ APIs to build streaming responses.
 """
 
 import os
-import openai
+from openai import AzureOpenAI
 import json 
 import re
 import time
@@ -21,7 +21,13 @@ from app.utils import (
 )
 
 # Initialize
-openai.api_key = os.environ.get("SECRET_KEY")
+client = AzureOpenAI(
+            api_version="2024-12-01-preview",
+            azure_endpoint=os.environ.get("OPENAI_AZURE_ENDPOINT"),
+            api_key=os.environ.get("OPENAI_API_KEY_AZURE"),
+)
+
+
 # NOTE: This eagerly loads embedding models and indices on import which can be
 # expensive; consider lazy-loading in production to reduce startup time.
 embedding_model, saved_resources, documents_resources, saved_articles, documents_articles = get_model_and_indices()
@@ -599,8 +605,8 @@ def _construct_response_new(
 
     # ---- TOOL LOOP ----
     while True:
-        response = openai.chat.completions.create(
-            model="gpt-5.2",
+        response = client.chat.completions.create(
+            model="gpt-5-chat",
             messages=messages,
             tools=tools,
             tool_choice="auto"
@@ -725,8 +731,8 @@ def _construct_response_vanilla(
     messages.append({"role": "user", "content": situation})
     
     # Call GPT without tools, without RAG
-    response = openai.chat.completions.create(
-        model="gpt-5.2",
+    response = client.chat.completions.create(
+        model="gpt-5-chat",
         messages=messages,
         stream=True
     )
