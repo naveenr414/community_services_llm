@@ -1,0 +1,205 @@
+/* ===========================
+   MAIN CONTAINERS
+   =========================== */
+
+.container {
+  margin: auto;
+  background: var(--bg-primary);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  width: 90%;
+  height: 90%;
+}
+
+.main-content {
+  width: 100%;
+  padding: var(--spacing-xl);
+  transition: margin-right var(--transition-slow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-content.shifted {
+  margin-right: 20%;
+}
+
+
+/* ===========================
+   RESOURCE RECOMMENDATION LAYOUT
+   =========================== */
+
+.resource-recommendation-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.content-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-xl);
+  min-height: 0;
+  overflow: hidden;
+  align-items: start;
+}
+
+
+/* ===========================
+   LEFT & RIGHT SECTIONS
+   =========================== */
+
+.left-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  box-sizing: border-box;
+  position: relative;
+  transition: justify-content var(--transition-normal), padding var(--transition-normal);
+  min-width: 0;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.left-section.submitted {
+  justify-content: flex-start;
+  padding-top: var(--spacing-xl);
+}
+
+.page-title,
+.instruction {
+  transition: margin var(--transition-normal);
+}
+
+.right-section {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+  
+  /* Use a fixed height so the children know what to overflow against */
+  height: calc(100vh - 200px); 
+  gap: var(--spacing-xl);
+  position: sticky;
+  top: var(--spacing-xl);
+  
+  /* This prevents the whole sidebar from scrolling 
+     so individual boxes can scroll instead */
+  overflow: hidden; 
+}
+
+
+/* ===========================
+   INPUT SECTION
+   =========================== */
+
+.input-section {
+  background-color: var(--bg-secondary);
+  padding: 1rem 1.25rem;
+  margin: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+
+/* ===========================
+   BACKEND SELECTOR
+   =========================== */
+
+.backend-selector-div {
+  display: flex;
+  height: 100%;
+  padding-left: var(--spacing-xl);
+  border-radius: var(--radius-sm);
+  text-align-last: center;
+  gap: var(--spacing-md);
+  flex-direction: row;
+}
+
+.backend-select {
+  border-radius: var(--radius-sm);
+  font-family: Arial, sans-serif;
+}
+
+
+/* ===========================
+   TABS
+   =========================== */
+
+.tabs {
+  display: flex;
+  background-color: var(--bg-secondary);
+}
+
+.tab-button {
+  flex: 1;
+  padding: var(--spacing-md);
+  text-align: center;
+  font-size: var(--font-base);
+  border: none;
+  background-color: var(--bg-tertiary);
+  cursor: pointer;
+  transition: background-color var(--transition-normal);
+  height: 90%;
+}
+
+.tab-button:hover,
+.tab-button.active {
+  background-color: var(--bg-hover);
+}
+
+.tab-content {
+  flex: 1;
+  font-size: var(--font-base);
+  overflow-y: auto;
+  margin-top: var(--spacing-md);
+}
+
+
+/* ===========================
+   HEADER
+   =========================== */
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: nowrap;
+  gap: var(--spacing-md);
+}
+
+
+/* ===========================
+   RESPONSIVE - MOBILE
+   =========================== */
+
+@media (max-width: 768px) {
+  .conversation-thread {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border-dark);
+    box-sizing: border-box;
+  }
+
+  .content-area {
+    grid-template-columns: 1fr;
+  }
+
+  .right-section {
+    margin-top: 0;
+  }
+}

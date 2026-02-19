@@ -11,6 +11,10 @@ body, html {
   overflow: hidden;
 }
 
+.tools {
+  display: flex;
+}
+
 .navbar {
   background-color: #f1f1f1;
   width: 250px;
@@ -110,6 +114,7 @@ body, html {
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 20px;
+  padding: 10px;
 }
 
 .tile {
@@ -235,4 +240,110 @@ body, html {
 .organization-dropdown:focus {
   outline: none;
   border-color: #0056b3;
+}
+/* Login Page Styles */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #fff; /* Changed to white background */
+}
+
+.login-card {
+  background-color: white;
+  padding: 2rem;
+  width: 100%;
+  max-width: 450px; /* Made wider */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Removed box-shadow and border-radius */
+}
+
+.login-logo {
+  margin-bottom: 1.5rem;
+  width: 70px;
+  height: 70px;
+}
+
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.login-card h1 {
+  color: #254676;
+  margin-bottom: 1.2rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.login-card h2 {
+  color: #4a4a4a;
+  margin-bottom: 2rem;
+  font-size: 1.4rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.form-group {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #254676;
+  outline: none;
+}
+
+.login-button {
+  background-color: #254676;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.8rem 1.5rem;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.login-button:hover {
+  background-color: #1a385e;
+}
+
+.login-button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 0.8rem;
+  border-radius: 4px;
+  margin-bottom: 1.2rem;
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
 }

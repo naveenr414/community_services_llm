@@ -3,7 +3,9 @@
     <img src="./img/small_pull.png" width="512">
 </p>
 
-This repository contains the implementation for the paper **"PeerCopilot: A Language Model-Powered Assistant for Behavioral Health Organizations"**.
+This repository contains the implementation for the paper **"PeerCopilot: A Language Model-Powered Assistant for Behavioral Health Organizations"** (IAAI 2025).
+
+**Paper:** [arXiv:2511.21721](https://arxiv.org/abs/2511.21721) | [PDF](https://arxiv.org/pdf/2511.21721)
 
 This work was done by Gao Mo*, Naveen Raman*, Megan Chai, Cindy Peng, Shannon Pagdon, Nev Jones, Hong Shen, Peggy Swarbrick, Fei Fang.
 
@@ -19,28 +21,62 @@ Peer-run behavioral health organizations offer holistic wellness support by comb
 To set up the backend environment, first clone this repository:
 
 ```bash
-git clone https://github.com/naveenr414/community_services_llm.git
+git clone https://github.com/chengolivia/community_services_llm.git
+cd community_services_llm
 ```
 
-Then install dependencies and set your OpenAI key
+Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+Install Python dependencies:
 
 ```bash
+cd backend
 pip install -r requirements.txt
-npm run build
-export SECRET_KEY=...
+```
+
+Install frontend dependencies:
+
+```bash
+cd ../frontend
+npm install
+```
+
+Set up environment variables. Create a .env file in the backend directory with:
+
+```bash
+OPENAI_API_KEY=your_key_here
+DATABASE_URL=your_database_url
+RESOURCE_DB_URL=your_resource_database_url
+GOOGLE_API_KEY=your_google_api_key
+BRAVE_API_KEY=your_brave_api_key
+SECRET_KEY=your_secret_key
+HF_TOKEN=your_huggingface_token
 ```
 
 ### Running the Application
 
-After installing dependencies run the app through the following:
+Start the backend server:
 
 ```bash
-npm run build
+cd backend
 npm run start
 ```
-PeerCoPilot will then be available at:
 
-http://127.0.0.1:8000/
+In a separate terminal, start the frontend:
+
+```bash
+cd frontend
+npm start
+```
+
+PeerCoPilot will be available at:
+
+http://localhost:3000/ (frontend)
+http://127.0.0.1:8000/ (backend API)
 
 ### Extending to New Organizations
 To extend this to new organizations, prepare a file called `<name>_resources.txt` in the backend/data folder
@@ -48,4 +84,4 @@ Next, scrape the resources by running
 ```bash
 python scrape_resources.py --org_name {name} --location "<location/state>"
 ```
-Finally, add this new organization to `Home.js` and `submodules.py`. 
+Finally, add this new organization to `Home.js` and `submodules.py`.

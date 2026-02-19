@@ -1,0 +1,71 @@
+/* ===========================
+   CALENDAR PAGE
+   =========================== */
+
+.schedule .day {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.date {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  border-radius: var(--radius-full);
+  font-weight: bold;
+}
+
+.black {
+  background: black;
+  color: var(--color-text-inverse);
+}
+
+.gray {
+  background: var(--color-border);
+  color: black;
+}
+
+.info {
+  display: inline-block;
+  margin-left: var(--spacing-md);
+  font-weight: bold;
+  color: var(--color-text-secondary);
+}
+
+.schedule ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.schedule li {
+  font-size: var(--spacing-xl);
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing-xs);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.schedule li:hover {
+  background-color: var(--bg-secondary);
+}
+
+.dot {
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  border-radius: var(--radius-full);
+  display: inline-block;
+  margin-right: var(--spacing-xl);
+  flex-shrink: 0;
+}
+
+/* Legacy color classes (if needed) */
+.yellow { background: #f1c40f; }
+.purple { background: #9b59b6; }
+.blue { background: #3498db; }
+.pink { background: #e91e63; }

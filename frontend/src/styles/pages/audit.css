@@ -1,0 +1,151 @@
+.audit-logs-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.filters-panel {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.filter-row input {
+  flex: 1;
+  min-width: 150px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+.log-count {
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.logs-table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px; /* Adjust this height as needed */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.logs-table th {
+  background: #343a40;
+  color: white;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.logs-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  font-size: 13px;
+}
+
+.logs-table tr:hover {
+  background: #f8f9fa;
+}
+
+.failure-row {
+  background: #fff3cd !important;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.failure {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+details summary {
+  cursor: pointer;
+  color: #007bff;
+  font-size: 12px;
+}
+
+details pre {
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+.loading, .error-message {
+  padding: 20px;
+  text-align: center;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 4px;
+}

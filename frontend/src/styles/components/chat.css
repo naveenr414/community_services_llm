@@ -1,0 +1,190 @@
+/* ===========================
+   CONVERSATION & MESSAGES
+   =========================== */
+
+.conversation-thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  overflow-y: auto;
+  padding: var(--spacing-xl) 0;
+}
+
+.message-blurb {
+  max-width: 80%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-2xl);
+  font-size: var(--font-base);
+  line-height: var(--line-height-normal);
+  word-wrap: break-word;
+  margin-bottom: var(--spacing-xs);
+}
+
+.message-blurb.user {
+  background-color: var(--bg-message-user);
+  color: var(--color-text);
+  align-self: flex-end;
+  text-align: left;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 var(--radius-2xl);
+}
+
+.message-blurb.bot {
+  background-color: var(--bg-message-bot);
+  color: var(--color-text-light);
+  align-self: flex-start;
+  text-align: left;
+  border-radius: var(--radius-2xl) var(--radius-2xl) var(--radius-2xl) 0;
+}
+
+.bot-heading {
+  font-weight: bold;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+  text-transform: capitalize;
+}
+
+
+/* ===========================
+   MARKDOWN IN MESSAGES
+   =========================== */
+
+.message-blurb ul,
+.message-blurb ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+  line-height: var(--line-height-relaxed);
+}
+
+.message-blurb ul {
+  list-style-type: disc;
+}
+
+.message-blurb ol {
+  list-style-type: decimal;
+}
+
+.message-blurb li {
+  display: list-item;
+  margin: 0.4em 0;
+  font-size: var(--font-base);
+  line-height: var(--line-height-normal);
+}
+
+.message-blurb li p {
+  margin: 0.25em 0;
+  display: inline-block;
+}
+
+.message-blurb ul ul,
+.message-blurb ol ol,
+.message-blurb ul ol,
+.message-blurb ol ul {
+  margin: 0.25em 0;
+}
+
+.message-blurb ul ul {
+  list-style-type: circle;
+}
+
+.message-blurb ol ol {
+  list-style-type: lower-alpha;
+}
+
+.message-blurb li > p:first-child {
+  margin-top: 0;
+}
+
+.message-blurb li > p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* ===========================
+   RESOURCE ITEMS
+   =========================== */
+
+.resource-item {
+  font-size: var(--font-base);
+  line-height: var(--line-height-normal);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border-lighter);
+}
+
+.resource-item:last-child {
+  border-bottom: none;
+}
+
+.resource-item.with-top-border {
+  border-top: 2px solid var(--color-border);
+  padding-top: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+}
+
+.resource-item p,
+.resource-item span,
+.resource-item a,
+.resource-item strong,
+.resource-item em {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.resource-item h1 { font-size: var(--font-3xl); }
+.resource-item h2 { font-size: var(--font-2xl); }
+.resource-item h3 { font-size: var(--font-lg); }
+.resource-item h4,
+.resource-item h5,
+.resource-item h6 { font-size: var(--font-base); }
+
+.resource-item ul,
+.resource-item ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+  line-height: var(--line-height-relaxed);
+}
+
+.resource-item ul {
+  list-style-type: disc;
+}
+
+.resource-item ol {
+  list-style-type: decimal;
+}
+
+.resource-item li {
+  display: list-item !important;
+  margin: 0.4em 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+
+/* ===========================
+   GOALS & RESOURCES BOXES
+   =========================== */
+   .goals-box,
+   .resources-box {
+     flex: 1; /* Both boxes share the space 50/50 */
+     display: flex;
+     flex-direction: column;
+     
+     /* CRITICAL: Allows the box to be smaller than its text content */
+     min-height: 0; 
+   }
+   
+   /* We create a wrapper for the actual list to handle scrolling */
+   .scroll-area {
+     overflow-y: auto;
+     flex: 1;
+     padding-right: var(--spacing-sm);
+   }
+   
+   /* Custom Scrollbar Styles (Keep yours, just apply to .scroll-area) */
+   .scroll-area::-webkit-scrollbar {
+     width: 6px;
+   }
+   .scroll-area::-webkit-scrollbar-thumb {
+     background: var(--color-border);
+     border-radius: var(--radius-xs);
+   }

@@ -1,144 +1,277 @@
-import openai 
-import concurrent.futures
-import re
+"""Core pipeline: resource extraction, refinement, and orchestration for responses.
+
+This module exposes `construct_response` which calls RAG extraction and OpenAI
+APIs to build streaming responses.
+"""
+
+import os
+import openai
 import json 
-import os 
+import re
+import time
+import concurrent.futures
 import numpy as np
 
-from app.eligibility_check import eligibility_check
-from app.rag_utils import get_all_embeddings
+from app.rag_utils import get_model_and_indices
+from app.tools import *
 from app.utils import (
     call_chatgpt_api_all_chats,
     stream_process_chatgpt_response,
     get_all_prompts,
-    call_chatgpt_with_functions,
 )
 
+# Initialize
 openai.api_key = os.environ.get("SECRET_KEY")
-
+# NOTE: This eagerly loads embedding models and indices on import which can be
+# expensive; consider lazy-loading in production to reduce startup time.
+embedding_model, saved_resources, documents_resources, saved_articles, documents_articles = get_model_and_indices()
 internal_prompts, external_prompts = get_all_prompts()
-model, saved_indices, documents = get_all_embeddings({'cspnj': 'data/cspnj.csv','clhs': 'data/clhs.csv'})
 
-def get_questions_resources(situation,all_messages,organization,k: int = 25):
-    """Process user situation + generate questions and resources
 
-    Arguments:
-        situation: String, last message user sent
-        all_messages: List of dictionaries, with all the messages
+# ============================================================================
+# Legacy RAG pipeline helpers (used for the "Old Version")
+# ============================================================================
 
-    Returns: String response, with resources and questions, 
-        and a string, containing a dictionary on which 
-        external resources to load """
-    
-    all_message_list = []
-    
-    for prompt in ['goal','followup_question','resource','which_resource','benefit_extract']:
-        all_message_list.append([{'role': 'system', 'content': internal_prompts[prompt].replace("[Organization]",organization)}]+all_messages+[{"role": "user", "content": situation}])
+def extract_resources(
+    embedding_model,
+    saved_indices,
+    documents,
+    situation: str,
+    which_indices: dict,
+    k: int = 25,
+) -> str:
+    """
+    Extract most similar resources using RAG.
+
+    Args:
+        embedding_model: SentenceTransformer model
+        saved_indices: Dictionary of FAISS indices
+        documents: Dictionary of document lists
+        situation: User's situation text
+        which_indices: Dictionary indicating which indices to search
+        k: Number of results to retrieve
+
+    Returns:
+        Newline-separated resource strings
+    """
+    results = []
+
+    for index_name, should_search in which_indices.items():
+        if not should_search:
+            continue
+
+        # Encode query
+        query_embedding = embedding_model.encode(
+            situation,
+            convert_to_tensor=False,
+        )
+
+        # Search index
+        _, indices = saved_indices[index_name].search(
+            np.array([query_embedding]),
+            k=k,
+        )
+
+        # Collect results
+        doc_list = documents[index_name]
+        results.extend(
+            [doc_list[j] for j in indices[0] if j < len(doc_list)]
+        )
+
+    return "\n".join(results)
+
+
+def deduplicate_resources(resources: list) -> list:
+    """
+    Remove duplicate resources from list.
+
+    Args:
+        resources: List of resource strings
+
+    Returns:
+        Deduplicated list of resources
+    """
+    all_lines = "\n".join(resources).split("\n")
+    seen_resources = set()
+    unique_lines = []
+
+    idx = 0
+    while idx < len(all_lines):
+        line = all_lines[idx]
+
+        # Found a new resource header
+        if "Resource:" in line and line not in seen_resources:
+            seen_resources.add(line)
+            unique_lines.append(line)
+            idx += 1
+
+            # Include continuation lines
+            while idx < len(all_lines) and "Resource:" not in all_lines[idx]:
+                unique_lines.append(all_lines[idx])
+                idx += 1
+
+        # Skip duplicate resource
+        elif line in seen_resources:
+            idx += 1
+            while idx < len(all_lines) and "Resource:" not in all_lines[idx]:
+                idx += 1
+
+        # Skip non-resource line
+        else:
+            idx += 1
+
+    return unique_lines
+
+
+def get_questions_resources(
+    situation: str,
+    all_messages: list,
+    organization: str,
+    k: int = 5,
+) -> tuple:
+    """
+    Process user situation and generate goals, questions, and resources.
+
+    This reproduces the legacy "old" pipeline behavior.
+    """
+    print(f"[Pipeline] Starting at {time.time()}")
+
+    # Build message lists for parallel processing
+    prompts = ["goal", "followup_question", "resource"]
+    message_lists = []
+
+    for prompt_name in prompts:
+        system_msg = internal_prompts[prompt_name].replace(
+            "[Organization]",
+            organization,
+        )
+        messages = (
+            [{"role": "system", "content": system_msg}]
+            + all_messages
+            + [{"role": "user", "content": situation}]
+        )
+        message_lists.append(messages)
+
+    # Parallel API calls
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        initial_responses = list(executor.map(lambda s: call_chatgpt_api_all_chats(s, stream=False), all_message_list))
-    initial_responses = list(initial_responses)
+        responses = list(
+            executor.map(
+                lambda msgs: call_chatgpt_api_all_chats(msgs, stream=False),
+                message_lists,
+            )
+        )
 
-    # Combine prompts with external information on resources
+    print(f"[Pipeline] Initial responses at {time.time()}")
+
+    # Extract resource mentions from response
     pattern = r"\[Resource\](.*?)\[\/Resource\]"
-    matches = re.findall(pattern,str(initial_responses[2]),flags=re.DOTALL)
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        resources = list(executor.map(lambda s: extract_resources(s,{'resource_{}'.format(organization): True},k=k), matches))
-    
-    # Combine prompts with external information on benefits
-    pattern = r"\[Situation\](.*?)\[/Situation\]"
-    benefit_info = re.sub(
+    resource_mentions = re.findall(
         pattern,
-        lambda m: eligibility_check(m.group()),  # Pass the matched content as a string
-        initial_responses[4],
-        flags=re.DOTALL
+        str(responses[2]),
+        flags=re.DOTALL,
     )
-    if "Irrelevant" in benefit_info:
-        benefit_info = ""
-    else:
-        constructed_messages = [{'role': 'system', 'content': internal_prompts['benefit_system']}] + [{'role': 'user', 'content': i['content'][:1000]} for i in all_messages if i['role'] == 'user']
-        constructed_messages.append({'role': 'user', 'content': situation})
-        constructed_messages.append({'role': 'user', 'content': 'Eligible Benefits: {}'.format(benefit_info)})
-        benefit_info = call_chatgpt_api_all_chats(constructed_messages,stream=False)
+    resource_mentions.append(situation)
 
-    # Call modules with additional extra information
-    which_external_resources = initial_responses[3]
-    try:
-        which_external_resources = json.loads(which_external_resources.strip()) 
-    except:
-        which_external_resources = {}
-    full_situation = "\n".join([i['content'] for i in all_messages if i['role'] == 'user' and len(i['content']) < 500] + [situation])
-    external_resources = extract_resources(full_situation,which_external_resources,k=k)
+    # Retrieve resources in parallel
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        resource_lists = list(
+            executor.map(
+                lambda text: extract_resources(
+                    embedding_model,
+                    saved_resources,
+                    documents_resources,
+                    text,
+                    {f"resource_{organization}": True},
+                    k=k,
+                ),
+                resource_mentions,
+            )
+        )
 
+    print(f"[Pipeline] Resources retrieved at {time.time()}")
 
-    # capture the raw "[Resource]...[/Resource]" output
-    raw_resource_prompt = initial_responses[2]
+    # Deduplicate and refine resources
+    unique_resources = deduplicate_resources(resource_lists)
 
-    # build the normal response text
-    sep = "\n\n\n"
-    # RIGHT HERE -<<<<
-    response = "\n".join([
-        f"SMART Goals: {initial_responses[0]}",
-        f"Questions: {initial_responses[1]}",
-        "Resources (use only these resources):\n" + sep.join(resources),
-        f"Benefit Info: {benefit_info}"
-    ])
+    refined_resources = call_chatgpt_api_all_chats(
+        [
+            {
+                "role": "system",
+                "content": internal_prompts["refine_resources"].format(
+                    organization,
+                    situation,
+                ),
+            },
+            {"role": "user", "content": "\n".join(unique_resources)},
+        ],
+        stream=False,
+    )
 
-    # now return three things: 
-    # 1) the string we already had, 
-    # 2) the RAG hits, 
-    # 3) the raw resource prompt
+    print(f"[Pipeline] Resources refined at {time.time()}")
+
+    # Build response
+    response = "\n".join(
+        [
+            f"SMART Goals: {responses[0]}",
+            f"Questions: {responses[1]}",
+            f"Resources (use only these resources):\n{refined_resources}",
+        ]
+    )
+
+    # External resources (legacy behavior: currently empty)
+    external_resources = ""
+    raw_resource_prompt = responses[2]
+
     return response, external_resources, raw_resource_prompt
 
-def format_resources_for_user(situation, all_messages, organization, max_items: int = 3):
-    """
-    Turn raw RAG lines into:
-    [{"name", "url", "how_to_use", "phone", "url_phone", "address", "action"}, …]
-    """
-    _, raw_resources, __ = get_questions_resources(situation, all_messages, organization)
-    formatted = []
 
-    # Expect each line in raw_resources like:
-    # Resource: <name>, URL: <url>, Address: <address>, Phone: <phone>, Action: <action>, Description: <how_to_use>
-    pattern = (
-        r"Resource:\s*(?P<name>[^,]+),\s*"
-        r"URL:\s*(?P<url>[^,]+),\s*"
-        r"Address:\s*(?P<address>[^,]+),\s*"
-        r"Phone:\s*(?P<phone>[^,]+),\s*"
-        r"Action:\s*(?P<action>[^,]+),\s*"
-        r"Description:\s*(?P<how_to_use>.+)"
+def parse_goals(full_response: str) -> list:
+    """Parse SMART goals from response."""
+    goals = []
+    match = re.search(
+        r"SMART Goals:\s*(.*?)\n(Questions|Goals|Steps)",
+        full_response,
+        flags=re.DOTALL,
     )
 
-    for entry in raw_resources.splitlines()[:max_items]:
-        m = re.match(pattern, entry.strip(), flags=re.IGNORECASE)
-        if m:
-            formatted.append({
-                "name":       m.group("name").strip(),
-                "url":        m.group("url").strip(),
-                "address":    m.group("address").strip(),
-                "phone":      m.group("phone").strip(),
-                "action":     m.group("action").strip(),
-                "how_to_use": m.group("how_to_use").strip(),
-            })
-        else:
-            # Fallback to minimal info if the line doesn't match the pattern
-            formatted.append({
-                "name":       entry.strip(),
-                "url":        "",
-                "address":    "",
-                "phone":      "",
-                "action":     "",
-                "how_to_use": ""
-            })
-    return formatted
+    if match:
+        section = match.group(1).strip()
+        for line in section.splitlines():
+            text = line.strip().lstrip("•").strip()
+            if text:
+                goals.append(text)
+
+    return goals
 
 
-
-def format_additional_resources(raw_resource_prompt: str, max_items: int = 3):
+def parse_resources(full_response: str, raw_prompt: str, k: int = 25) -> list:
     """
-    Parse the raw [Resource]…[/Resource] output into a list of dicts:
-      [{"name","url","action"}, …]
+    Parse resources from response.
+
+    Args:
+        full_response: The full pipeline response
+        raw_prompt: Raw resource extraction output
+        k: Maximum number of additional resources
+
+    Returns:
+        List of formatted resource strings
     """
-    formatted = []
+    resources = []
+
+    # Parse main resources section
+    match = re.search(
+        r"Resources[\s\S]*?:\s*\n([\s\S]*)",
+        full_response,
+    )
+
+    if match:
+        section = match.group(1).strip()
+        for line in section.splitlines():
+            text = line.strip().lstrip("•").strip()
+            if text:
+                resources.append(text)
+
+    # Parse additional resources from raw prompt
     block_re = (
         r"\[Resource\]\s*"
         r"Name:\s*(?P<name>.+?)\s*"
@@ -146,238 +279,461 @@ def format_additional_resources(raw_resource_prompt: str, max_items: int = 3):
         r"Action:\s*(?P<action>.+?)\s*"
         r"\[/Resource\]"
     )
-    for m in re.finditer(block_re, raw_resource_prompt, flags=re.DOTALL|re.IGNORECASE):
-        formatted.append({
-            "name":   m.group("name").strip(),
-            "url":    m.group("url").strip(),
-            "action": m.group("action").strip()
-        })
-        if len(formatted) >= max_items:
+
+    for match in re.finditer(block_re, raw_prompt, flags=re.DOTALL | re.IGNORECASE):
+        if len(resources) >= k:
             break
-    return formatted
 
-# ────────────────────────────────────────────────────────────────────────────
-# BOXES helper: run once, returns parsed lists for front-end panels
-def fetch_goals_and_resources(situation, all_messages, organization, k: int = 25):
-    """
-    Returns:
-      - goals: List[str]            # parsed SMART goals
-      - resources: List[str]        # formatted "Name — Action" strings
-    """
-    # 1) get the three outputs from the existing pipeline
-    full_response, external_resources, raw_prompt = get_questions_resources(
-        situation, all_messages, organization, k=k
-    )
+        name = match.group("name").strip()
+        url = match.group("url").strip()
+        action = match.group("action").strip()
 
-    # print(full_response)
-
-    # 2) parse SMART Goals from the full_response blob
-    goals = []
-    m = re.search(r"SMART Goals:\s*(.*?)\n(Questions|Goals|Steps)", full_response, flags=re.DOTALL)
-
-    if m:
-        section = m.group(1).strip()
-        goals = []
-        for line in section.splitlines():
-            text = line.strip().lstrip("•").strip()
-            if text:
-                goals.append(text)
-
-    # 3) First, include the RAG-based hits from external_resources
-    resources = []
-    # resources.append(external_resources)
-    # m = re.search(
-    #     r'(?ms)^\#{3}(?!\#)[ \t]*.*?\bResources?\b.*\r?\n([\s\S]*?)(?=^\#{3}(?!\#)|\Z)',
-    #     full_response
-    # )
-    # if m:
-    #     resources_block = m.group(1).strip()
-    #     print(resources_block)
-
-    # 4) Then append the “Additional Resources” parsed from the raw prompt
-    addl = format_additional_resources(raw_prompt, max_items=k)
-    for r in addl:
-        label = r.get("name", "")
-        url   = r.get("url", "")
-        act   = r.get("action", "")
-        # Bold name, link and action on separate lines
-        entry = f"**{label}**  \n"
+        entry = f"**{name}**  \n"
         if url:
             entry += f"[Link]({url})  \n"
-        if act:
-            entry += f"**Action:** {act}"
+        if action:
+            entry += f"**Action:** {action}"
+
         resources.append(entry)
 
-    return goals, resources
+    return resources
 
 
-#NEW PLANNER APPROACH
-def construct_response(situation, all_messages, model, organization):
+def fetch_goals_and_resources(
+    situation: str,
+    all_messages: list,
+    organization: str,
+    k: int = 25,
+) -> tuple:
     """
-    1) Ask the model: is this a substantive request that needs SMART goals?
-       -> JSON: {"needs_goals": true/false}
-    2a) If false: one-shot vanilla chat (no goals).
-    2b) If true: your existing SMART-goals + orchestration pipeline.
+    Main entry point for legacy goals and resources pipeline.
+
+    Returns:
+        Tuple of (goals, resources, full_response, external_resources, raw_prompt)
     """
+    # Run pipeline
+    full_response, external_resources, raw_prompt = get_questions_resources(
+        situation,
+        all_messages,
+        organization,
+        k=k,
+    )
+
+    print(f"[Pipeline] Questions/resources done at {time.time()}")
+
+    # Parse outputs
+    goals = parse_goals(full_response)
+    resources = parse_resources(full_response, raw_prompt, k=k)
+
+    # Add external resources to beginning (kept for compatibility)
+    if external_resources:
+        resources.insert(0, external_resources)
+
+    print(f"[Pipeline] Parsing done at {time.time()}")
+
+    return goals, resources, full_response, external_resources, raw_prompt
 
 
+def _legacy_construct_response(
+    situation: str,
+    all_messages: list,
+    model: str,
+    organization: str,
+    full_response: str,
+    external_resources: str,
+    raw_prompt: str,
+):
+    """
+    Legacy response generation with streaming.
 
-    # -- 1) INTENT & verbosity CHECK tiny LLM call --
-    intent_and_verbosity_msgs = [
-    {
-        "role": "system",
-        "content": (
-            "You’re a request analyzer.  "
-            "Given one user message, answer **strictly** in JSON with two keys:\n"
-            '  • "needs_goals": true if they want advice or help or concrete next steps;\n'
-            '  • "verbosity": one of "brief","medium","deep", chosen based on how much detail they implicitly want.\n'
-            "\n"
-            "Examples:\n"
-            '- User: "How are you?" → { "needs_goals": false, "verbosity": "brief" }\n'
-            '- User: "I’m struggling to pay rent, please help me." → { "needs_goals": true, "verbosity": "medium" }\n'
-            '- User: "I need a detailed plan to switch careers and build new skills." → { "needs_goals": true, "verbosity": "deep" }\n'
-            "Return only valid JSON, no extra commentary."
-        )
-    },
-    {"role": "user", "content": situation}
-    ]
-    meta_resp = call_chatgpt_api_all_chats(
-        intent_and_verbosity_msgs,
-        stream=False,
-        max_tokens=40
-    ).strip()
+    This is essentially the original `construct_response` implementation.
+    """
+    print(f"[Response] Starting at {time.time()}")
 
-    
+    # For the "old version" path we always use the full copilot orchestration.
+    needs_goals = True
+    verbosity = "medium"
 
-    try:
-        meta = json.loads(meta_resp)
-        needs_goals = meta.get("needs_goals", False)
-        verbosity   = meta.get("verbosity", "medium")
-    except:
-        needs_goals = False
-        verbosity   = "medium"
-
-    print(f"[DEBUG] needs_goals={needs_goals}, verbosity={verbosity}")
-
-    # -- 2a) if it's just small talk, do a pure chat reply --
+    # Small talk branch (kept for completeness, but not used in practice)
     if not needs_goals:
-        print("[DEBUG] taking small‐talk branch")
         chat_msgs = (
-            [{"role": "system", "content":
-              f"You are a helpful assistant for {organization}. Reply warmly and concisely."}]
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        f"You are a helpful assistant for {organization}. "
+                        "Reply warmly and concisely."
+                    ),
+                }
+            ]
             + all_messages
             + [{"role": "user", "content": situation}]
         )
-        # STREAM the response back
-        chat_resp = call_chatgpt_api_all_chats(chat_msgs, stream=True, max_tokens=500)
-        yield from stream_process_chatgpt_response(chat_resp)
+        response = call_chatgpt_api_all_chats(
+            chat_msgs,
+            stream=True,
+            max_tokens=500,
+        )
+        yield from stream_process_chatgpt_response(response)
         return
 
-
-    # If they implicitly want just the headlines…
+    # Brief goals only branch (kept for completeness)
     if verbosity == "brief":
-        print("[DEBUG] taking brief GOALS branch")
         prompt = (
-            f"You are a concise assistant for {organization}.  "
-            "Given the user’s request, produce **up to three** SMART goals as bullet points, "
-            "each in one short sentence, tailored exactly to their situation."
+            f"You are a concise assistant for {organization}. "
+            "Given the user's request, produce **up to three** SMART goals "
+            "as bullet points, each in one short sentence, tailored exactly "
+            "to their situation."
         )
-        msgs = [{"role":"system","content":prompt}] + all_messages + [{"role":"user","content":situation}]
-        yield from stream_process_chatgpt_response(
-            call_chatgpt_api_all_chats(msgs, stream=True, max_tokens=20)
-        )
-        return
-
-    # If they want the full orchestration…
-    if verbosity == "deep":
-        print("[DEBUG] verbosity=deep → using full orchestration with k=50")
-        full_k = 50
-    else: 
-        print("[DEBUG] verbosity=medium → using standard orchestration with k=25")
-        full_k = 25
-
-
-    # -- 2b) otherwise: we run our full SMART-goals + orchestration pipeline --
-
-    # retaining the 'chatgpt' vs 'copilot' modes branch:
-    if model == 'chatgpt':
-        print("[DEBUG] model=chatgpt branch")
         msgs = (
-            [{'role': 'system', 'content':
-              f"You are a Co-Pilot tool for {organization}, a peer-peer support org."}]
+            [{"role": "system", "content": prompt}]
             + all_messages
-            + [{'role': 'user', 'content': situation}]
+            + [{"role": "user", "content": situation}]
         )
-        resp = call_chatgpt_api_all_chats(msgs, max_tokens=750)
-        yield from stream_process_chatgpt_response(resp)
+        response = call_chatgpt_api_all_chats(
+            msgs,
+            stream=True,
+            max_tokens=200,
+        )
+        yield from stream_process_chatgpt_response(response)
         return
 
-    # the existing copilot pipeline:
-    print("[DEBUG] copilot pipeline branch (SMART goals + orchestration)")
-    initial_response, external_resources, raw_resource_prompt = get_questions_resources(
-        situation, all_messages, organization, k=full_k
-    )
+    # ChatGPT mode branch (not used in current integration, but retained)
+    if model == "chatgpt":
+        msgs = (
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        f"You are a Co-Pilot tool for {organization}, "
+                        "a peer-peer support org."
+                    ),
+                }
+            ]
+            + all_messages
+            + [{"role": "user", "content": situation}]
+        )
+        response = call_chatgpt_api_all_chats(
+            msgs,
+            stream=True,
+            max_tokens=750,
+        )
+        yield from stream_process_chatgpt_response(response)
+        return
 
+    # Full copilot orchestration (main path)
+    print(f"[Response] Full orchestration at {time.time()}")
 
-    new_message = [{'role': 'system', 'content': internal_prompts['orchestration']}]
-    new_message += [{'role': 'system', 'content': external_resources}]
-    new_message += all_messages + [
-        {"role": "user",    "content": situation},
-        {"role": "user",    "content": initial_response}
+    orchestration_messages = [
+        {"role": "system", "content": internal_prompts["orchestration"]},
+        {"role": "system", "content": external_resources},
+    ]
+    orchestration_messages += all_messages
+    orchestration_messages += [
+        {"role": "user", "content": situation},
+        {"role": "user", "content": full_response},
     ]
 
-    # 1) stream the main orchestration 
-    response = call_chatgpt_api_all_chats(new_message, stream=True, max_tokens=1000)
+    print(f"[Response] Streaming orchestration at {time.time()}")
+    response = call_chatgpt_api_all_chats(
+        orchestration_messages,
+        stream=True,
+        max_tokens=1000,
+    )
     yield from stream_process_chatgpt_response(response)
 
 
+def construct_response(
+    situation: str,
+    all_messages: list,
+    model: str,
+    organization: str,
+    version: str = "new",
+):
+    # Route to appropriate version implementation
+    print(f"[construct_response] Version received: {version}")  # Add this
+    if version == "new":
+        # NEW VERSION: Current implementation with all tools
+        print("[construct_response] Routing to NEW VERSION")  # Add this
+        return _construct_response_new(situation, all_messages, model, organization)
+    elif version == "old":
+        # OLD VERSION: RAG retrieval → inject into prompt → GPT call (no tools)
+        print("[construct_response] Routing to OLD VERSION")  # Add this
+        return _construct_response_old(situation, all_messages, model, organization)
+    elif version == "vanilla":
+        # VANILLA GPT: Simple prompt → GPT call (no RAG, no tools)
+        print("[construct_response] Routing to VANILLA VERSION")  # Add this
+        return _construct_response_vanilla(situation, all_messages, model, organization)
+    else:
+        # Default to new version if unknown version
+        print("[construct_response] Routing to NEW VERSION (default)")  # Add this
+        return _construct_response_new(situation, all_messages, model, organization)
 
+def _construct_response_new(
+    situation: str,
+    all_messages: list,
+    model: str,
+    organization: str,
+):
+    print("Organization", organization)
 
-def extract_resources(situation, which_indices, k=25):
-    """Given a string and external resource config, retrieve most similar lines."""
-    ret = []
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "resources_tool",
+                "description": (
+                    "Find nearby local resources such as food banks, shelters, or clinics. "
+                    "Always use the user's location when searching."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "k": {"type": "integer", "default": 5}
+                    },
+                    "required": ["query"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "library_tool",
+                "description": "Search deep-dive documents for peer support, crisis, or trans-related topics.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "category": {
+                            "type": "string",
+                            "enum": ["trans", "crisis", "peer"]
+                        }
+                    },
+                    "required": ["query", "category"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "directions_tool",
+                "description": "Get distance and travel time between two locations.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "origin": {"type": "string"},
+                        "destination": {"type": "string"},
+                        "mode": {
+                            "type": "string",
+                            "enum": ["driving", "transit", "walking", "bicycling"]
+                        }
+                    },
+                    "required": ["origin", "destination", "mode"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "calculator_tool",
+                "description": "Perform basic math calculations.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {"type": "string"}
+                    },
+                    "required": ["expression"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search_tool",
+                "description": (
+                    "Search the internet for nearby local services, addresses, hours, "
+                    "or other information when internal resources are insufficient or unclear."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"}
+                    },
+                    "required": ["query"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_eligibility",
+                "description": "Check eligibility for benefits such as SNAP.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "program": {"type": "string", "enum": ["snap"]},
+                        "household_size": {"type": "integer"},
+                        "monthly_income": {"type": "number"}
+                    },
+                    "required": ["program", "household_size", "monthly_income"]
+                }
+            }
+        },
+    ]
 
-    for i in which_indices:
-        if which_indices[i]:
-            query_embedding = model.encode(situation, convert_to_tensor=False)
-            _, I = saved_indices[i].search(np.array([query_embedding]), k=k)
-            ret += [documents[i][j] for j in I[0] if j < len(documents[i])]  
-    return "\n".join(ret)
+    system_prompt = f"""
+    You are PeerCoPilot, a supportive AI assistant for peer providers at {organization}.
 
+    Use peer-friendly, non-clinical language grounded in CSPNJ values.
+    Prioritize accuracy and safety. Never invent facts or resources.
 
+    IMPORTANT TOOL RULES:
+    - You may call multiple tools in sequence.
+    - Do not answer from general knowledge alone when local resources are requested.
+    """
 
+    messages = [{"role": "system", "content": system_prompt}]
+    messages += all_messages
+    messages.append({"role": "user", "content": situation})
 
-def get_benefit_demographics(user_input,all_messages):
-    """Extract information from a user's input
-    
-    Arguments:
-        user_input: Current user situation
-        all_messages: All the previous messages
-        
-    Returns: Response, which is the extracted information"""
+    # ---- TOOL LOOP ----
+    while True:
+        response = openai.chat.completions.create(
+            model="gpt-5.2",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
 
-    new_messages = [{'role': 'system', 'content': internal_prompts['benefit_extract']}] + all_messages
-    new_messages.append({'role': 'user', 'content': user_input})
-    extracted_info = call_chatgpt_api_all_chats(new_messages,stream=False).strip()
-    return extracted_info
+        choice = response.choices[0]
 
-def get_benefit_eligibility(situation,all_messages):
-    """Given a situation and all the messages, get info on their benefits
-    
-    Arguments:
-        situation: String, the user's current situation
-        all_messages: List of previous messages
-    
-    Returns: String, info on their current benefit eligibilities"""
-    
-    extracted_info = get_benefit_demographics(situation,all_messages)
+        # FINAL ANSWER (no more tools)
+        if choice.finish_reason != "tool_calls":
+            final_text = choice.message.content or ""
+            for chunk in final_text.split("\n"):
+                yield f"data: {chunk}<br/>\n\n"
+            break
 
-    pattern = r"\[Situation\](.*?)\[/Situation\]"
-    eligibility_info = re.sub(
-        pattern,
-        lambda m: eligibility_check(m.group()),  # Pass the matched content as a string
-        extracted_info,
-        flags=re.DOTALL
+        # ASSISTANT REQUESTED TOOLS
+        messages.append(choice.message)
+
+        for tool_call in choice.message.tool_calls:
+            name = tool_call.function.name
+            args = json.loads(tool_call.function.arguments)
+
+            print(f"[DEBUG] Executing {name} with {args}")
+
+            if name == "resources_tool":
+                output = resources_tool(
+                    query=args.get("query", ""),
+                    organization=organization,
+                    saved_indices=saved_resources,
+                    documents=documents_resources,
+                    embedding_model=embedding_model
+                )
+
+            elif name == "library_tool":
+                output = library_tool(
+                    query=args.get("query", ""),
+                    category=args.get("category", "peer"),
+                    saved_indices_peer=saved_articles,
+                    documents_peer=documents_articles,
+                    embedding_model=embedding_model
+                )
+
+            elif name == "directions_tool":
+                output = directions_tool(
+                    origin=args.get("origin", ""),
+                    destination=args.get("destination", ""),
+                    mode=args.get("mode", "driving")
+                )
+
+            elif name == "calculator_tool":
+                output = calculator_tool(
+                    expression=args.get("expression", "0")
+                )
+
+            elif name == "web_search_tool":
+                output = web_search_tool(
+                    query=args.get("query", "")
+                )
+
+            elif name == "check_eligibility":
+                output = check_eligibility(
+                    program=args.get("program", ""),
+                    household_size=args.get("household_size", 1),
+                    monthly_income=args.get("monthly_income", 0)
+                )
+
+            else:
+                output = "Error: Unknown tool."
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": output
+            })
+
+    yield "[DONE]\n\n"
+
+def _construct_response_old(
+    situation: str,
+    all_messages: list,
+    model: str,
+    organization: str,
+):
+    """
+    Old version: recreate the legacy goals/questions/resources pipeline
+    and orchestration behavior (no tools).
+    """
+    # 1) Run the legacy questions/resources pipeline
+    #    This uses internal prompts, RAG over resources, and refinement.
+    goals, resources, full_response, external_resources, raw_prompt = fetch_goals_and_resources(
+        situation=situation,
+        all_messages=all_messages,
+        organization=organization,
+        k=25,
     )
- 
-    return eligibility_info
+
+    # 2) Stream the final response using the legacy orchestration logic.
+    #    We explicitly pass model="copilot" to take the full orchestration path.
+    return _legacy_construct_response(
+        situation=situation,
+        all_messages=all_messages,
+        model="copilot",
+        organization=organization,
+        full_response=full_response,
+        external_resources=external_resources,
+        raw_prompt=raw_prompt,
+    )
+
+def _construct_response_vanilla(
+    situation: str,
+    all_messages: list,
+    model: str,
+    organization: str,
+):
+    """Vanilla GPT: Simple prompt → GPT call (no RAG, no tools)."""
+    # Build messages with simple system prompt
+    system_prompt = "You are a helpful assistant for CSPNJ peer providers. Answer questions based on your general knowledge."
+    
+    messages = [
+        {"role": "system", "content": system_prompt}
+    ]
+    messages += all_messages
+    messages.append({"role": "user", "content": situation})
+    
+    # Call GPT without tools, without RAG
+    response = openai.chat.completions.create(
+        model="gpt-5.2",
+        messages=messages,
+        stream=True
+    )
+    
+    for event in response:
+        if event.choices[0].delta.content:
+            formatted_content = event.choices[0].delta.content.replace("\n", "<br/>")
+            yield f"data: {formatted_content}\n\n"
+    
+    yield "[DONE]\n\n"

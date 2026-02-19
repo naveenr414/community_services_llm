@@ -10,10 +10,16 @@ backend/*/__pycache__
 backend/*/secret.py
 backend/uploads
 backend/saved_embeddings/
+backend/saved_embeddings_backup/
+backend/nbs/saved_embeddings/
 node_modules/
+backend/library_resources/
+backend/vector_storage/
 package-lock.json
 data_analysis/
 frontend-react/node_modules/
 frontend-react/build/
 backend/__pycache__/
-
+backend/data/*.db
+.env
+*.ipynb

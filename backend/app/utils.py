@@ -1,7 +1,11 @@
+"""Small utility wrappers for PDF handling and OpenAI/ChatGPT access."""
+
 import openai
 import PyPDF2
 from fpdf import FPDF
+from pathlib import Path
 
+BASE_DIR = Path(__file__).parent.parent
 
 def write_text_pdf(text,pdf_loc):
     """Save some text into a PDF
@@ -27,7 +31,7 @@ def call_chatgpt_api(system_prompt,prompt,stream=True):
     Arguments:
         system_prompt: String, what the main system prompt is
             Tells ChatGPT the general scenario
-        prompt: Specific promt for ChatGPT
+        prompt: Specific prompt for ChatGPT
 
     Returns: String, result from ChatGPT"""
 
@@ -47,7 +51,7 @@ def call_chatgpt_api(system_prompt,prompt,stream=True):
         return response.choices[0].message.content
 
 
-def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750):
+def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750,response_format=None):
     """Run ChatGPT with the 4o-mini model for a system prompt
     
     Arguments:
@@ -57,12 +61,22 @@ def call_chatgpt_api_all_chats(all_chats,stream=True,max_tokens=750):
         max_tokens: Integer, maximum number of tokens from OpenAI
     
     Returns: Either a Stream or String, result from ChatGPT"""
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",  
-        messages=all_chats,
-        stream=stream,
-        max_tokens=max_tokens,
-    )
+
+    if response_format is not None:
+        response = openai.chat.completions.create(
+            model="gpt-5.2",  
+            messages=all_chats,
+            stream=stream,
+            # max_tokens=max_tokens,
+            response_format=response_format
+        )
+    else:
+        response = openai.chat.completions.create(
+            model="gpt-5.2",  
+            messages=all_chats,
+            stream=stream,
+            # max_tokens=max_tokens,
+        )
     
     if stream:
         return response
@@ -110,17 +124,17 @@ def get_all_prompts():
     Returns: Dictionary internal_prompts and external_prompts
         mapping prompt name to a string"""
 
-    internal_prompt_names = ["benefit_system","benefit_extract","goal","followup_question","resource","orchestration","which_resource"]
+    internal_prompt_names = ["benefit_system","benefit_extract","goal","followup_question","resource","orchestration","which_resource","refine_resources"]
     external_prompt_names = ['human_resource','peer','crisis','trans']
 
     internal_prompts = {}
     external_prompts = {}
 
     for i in internal_prompt_names:
-        internal_prompts[i] = open("prompts/internal/{}.txt".format(i), encoding="utf-8").read()
+        internal_prompts[i] = open(BASE_DIR / "prompts/internal/{}.txt".format(i), encoding="utf-8").read()
 
     for i in external_prompt_names:
-        external_prompts[i] = open("prompts/external/{}.txt".format(i), encoding="utf-8").read()
+        external_prompts[i] = open(BASE_DIR / "prompts/external/{}.txt".format(i), encoding="utf-8").read()
 
     return internal_prompts, external_prompts
 
@@ -129,9 +143,8 @@ def call_chatgpt_with_functions(messages, functions, stream=False, max_tokens=75
     Wrapper around OpenAI’s function-calling API.
     Always returns a single ChatCompletion object.
     """
-    # Use the ChatCompletion class directly
     response = openai.chat.completions.create(
-        model="gpt-4o-mini",        # or your preferred function-calling model
+        model="gpt-4o-mini", 
         messages=messages,
         functions=functions,
         function_call="auto",
@@ -139,7 +152,6 @@ def call_chatgpt_with_functions(messages, functions, stream=False, max_tokens=75
         max_tokens=max_tokens,
     )
 
-    # If someone accidentally returned a tuple/list, take the first element
     if isinstance(response, (tuple, list)):
         response = response[0]
     return response
