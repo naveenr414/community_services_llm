@@ -68,6 +68,7 @@ app.add_middleware(
         os.environ.get("FRONTEND_URL", ""),
         "https://peercopilot.com",
         "https://www.peercopilot.com",
+        "https://lemon-bay-093fff60f.2.azurestaticapps.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
