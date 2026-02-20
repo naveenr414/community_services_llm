@@ -9,7 +9,7 @@ from jwt.exceptions import InvalidTokenError
 import os
 from typing import Optional
 from datetime import datetime, timezone
-from app.database import CONNECTION_STRING
+from backend.app.database import CONNECTION_STRING
 import hashlib
 import secrets
 import psycopg
@@ -17,7 +17,7 @@ import pyotp
 import qrcode
 import io
 import base64
-from app.audit_logger import AuditLogger
+from backend.app.audit_logger import AuditLogger
 
 
 SECRET_KEY = os.getenv("SECRET_KEY")

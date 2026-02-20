@@ -12,9 +12,9 @@ import time
 import concurrent.futures
 import numpy as np
 
-from app.rag_utils import get_model_and_indices
-from app.tools import *
-from app.utils import (
+from backend.app.rag_utils import get_model_and_indices
+from backend.app.tools import *
+from backend.app.utils import (
     call_chatgpt_api_all_chats,
     stream_process_chatgpt_response,
     get_all_prompts,

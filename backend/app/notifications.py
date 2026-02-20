@@ -8,7 +8,7 @@ import os
 import requests
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
-from app.database import fetch_provider_checkins_by_date, fetch_providers_to_notify_checkins
+from backend.app.database import fetch_provider_checkins_by_date, fetch_providers_to_notify_checkins
  
 
 def send_test_message(recipient="Olivia Cheng <ogc@andrew.cmu.edu>"):

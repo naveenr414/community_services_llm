@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 import json
 import os
-from app.database import CONNECTION_STRING
-from app.phi_scrubber import PHIScrubber
+from backend.app.database import CONNECTION_STRING
+from backend.app.phi_scrubber import PHIScrubber
 
 class AuditLogger:
     """Centralized audit logger for HIPAA compliance."""

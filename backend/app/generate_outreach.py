@@ -9,8 +9,8 @@ import os
 import openai 
 import json 
 from datetime import datetime, timedelta
-from app.utils import call_chatgpt_api_all_chats
-from app.database import CONNECTION_STRING
+from backend.app.utils import call_chatgpt_api_all_chats
+from backend.app.database import CONNECTION_STRING
 import spacy
 
 openai.api_key = os.environ.get("SECRET_KEY")

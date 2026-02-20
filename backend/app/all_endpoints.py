@@ -18,20 +18,20 @@ from apscheduler.triggers.cron import CronTrigger
 import threading
 import time
 import socketio
-from app.phi_scrubber import PHIScrubber
+from backend.app.phi_scrubber import PHIScrubber
 from openai import AzureOpenAI
 
-from app.audit_logger import AuditLogger
-from app.submodules import construct_response
-from app.process_profiles import get_all_outreach, get_all_service_users
-from app.login import get_current_user, UserData
-from app.login import router as auth_router
-from app.audit_viewer import router as audit_router
+from backend.app.audit_logger import AuditLogger
+from backend.app.submodules import construct_response
+from backend.app.process_profiles import get_all_outreach, get_all_service_users
+from backend.app.login import get_current_user, UserData
+from backend.app.login import router as auth_router
+from backend.app.audit_viewer import router as audit_router
 
 from typing import Optional
 import psycopg
 
-from app.database import (
+from backend.app.database import (
     update_conversation, 
     add_new_service_user, 
     fetch_service_user_checkins, 
@@ -39,8 +39,8 @@ from app.database import (
     get_notification_settings,
     update_notification_settings
 )
-from app.generate_outreach import generate_check_ins_rule_based
-from app.notifications import notification_job
+from backend.app.generate_outreach import generate_check_ins_rule_based
+from backend.app.notifications import notification_job
 import openai 
 
 # Environment configuration
@@ -156,7 +156,7 @@ def warmup_models():
     """Background task to load embeddings after server starts"""
     try:
         print("[Warmup] Loading embeddings...")
-        from app.rag_utils import get_model_and_indices
+        from backend.app.rag_utils import get_model_and_indices
         get_model_and_indices()
         print("[Warmup] Embeddings loaded successfully")
     except Exception as e:

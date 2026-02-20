@@ -1,9 +1,9 @@
 """Audit log viewer and reporting for HIPAA compliance."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.login import get_current_user, UserData
+from backend.app.login import get_current_user, UserData
 import psycopg
-from app.database import CONNECTION_STRING
+from backend.app.database import CONNECTION_STRING
 from typing import Optional, List
 from datetime import datetime, timedelta
 

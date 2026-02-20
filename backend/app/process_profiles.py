@@ -3,7 +3,7 @@
 import os
 import psycopg
 from psycopg.rows import dict_row
-from app.database import CONNECTION_STRING
+from backend.app.database import CONNECTION_STRING
 
 def get_all_service_users(provider_username, organization):
     """Get all service users for a given provider with their latest outreach details."""
