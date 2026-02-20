@@ -21,5 +21,4 @@ frontend-react/node_modules/
 frontend-react/build/
 backend/__pycache__/
 backend/data/*.db
-.env
 *.ipynb
